@@ -1,22 +1,3 @@
-"""
-Script COMPLETO para avaliar prompts otimizados.
-
-Este script:
-1. Carrega dataset de avaliação de arquivo .jsonl (datasets/bug_to_user_story.jsonl)
-2. Cria/atualiza dataset no LangSmith
-3. Puxa prompts otimizados do LangSmith Hub (fonte única de verdade)
-4. Executa prompts contra o dataset
-5. Calcula 5 métricas (Helpfulness, Correctness, F1-Score, Clarity, Precision)
-6. Publica resultados no dashboard do LangSmith
-7. Exibe resumo no terminal
-
-Suporta múltiplos providers de LLM:
-- OpenAI (gpt-4o, gpt-4o-mini)
-- Google Gemini (gemini-2.5-flash)
-
-Configure o provider no arquivo .env através da variável LLM_PROVIDER.
-"""
-
 import os
 import sys
 import json
@@ -24,13 +5,12 @@ from typing import List, Dict, Any
 from pathlib import Path
 from dotenv import load_dotenv
 from langsmith import Client
-from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate
 from utils import check_env_vars, format_score, print_section_header, get_llm as get_configured_llm
 from metrics import evaluate_f1_score, evaluate_clarity, evaluate_precision
 
 load_dotenv()
-
+client = Client()
 
 def get_llm():
     return get_configured_llm(temperature=0)
@@ -105,7 +85,7 @@ def create_evaluation_dataset(client: Client, dataset_name: str, jsonl_path: str
 def pull_prompt_from_langsmith(prompt_name: str) -> ChatPromptTemplate:
     try:
         print(f"   Puxando prompt do LangSmith Hub: {prompt_name}")
-        prompt = hub.pull(prompt_name)
+        prompt = client.pull_prompt(prompt_name)
         print(f"   ✓ Prompt carregado com sucesso")
         return prompt
 
@@ -288,8 +268,8 @@ def main():
     required_vars = ["LANGSMITH_API_KEY", "LLM_PROVIDER"]
     if provider == "openai":
         required_vars.append("OPENAI_API_KEY")
-    elif provider in ["google", "gemini"]:
-        required_vars.append("GOOGLE_API_KEY")
+    # elif provider in ["google", "gemini"]:
+    #     required_vars.append("GOOGLE_API_KEY")
 
     if not check_env_vars(required_vars):
         return 1
